@@ -36,6 +36,7 @@ which data will be downloaded from the data source server.
 
 ```python
 python TreesOfNYC.py
+```
 
 Note: depending on the data_limit it might take while until the data is loaded 
 and the webserver is ready. The dasboard can now be opened in your web browser:
