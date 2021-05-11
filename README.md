@@ -18,18 +18,14 @@ In python these can be installed using pip with the following command:
 Settings before starting the application
 ----------------------------------------
 
-- Credentials:
-
-In order to start your app insert your personal credentials for the NYC open
+- Credentials: In order to start your app insert your personal credentials for the NYC open
 data server. Enter the following data in the pre-defined section in TreesOfNYC.py
     - username
     - password
     - app token
 
 
-- Data limit:
-
-You can limit the amount of data which is loaded by the webserver by setting
+- Data limit: You can limit the amount of data which is loaded by the webserver by setting
 data_limit. Keep in mind: if not the full data set is selected it is unknown
 which data will be downloaded from the data source server.
          
