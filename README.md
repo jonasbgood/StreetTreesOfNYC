@@ -1,7 +1,6 @@
 # StreetTreesOfNYC
 
-Requirements
-------------
+## Requirements
 
 The following python packages are required:
  - pandas
@@ -12,27 +11,28 @@ The following python packages are required:
  
 In python these can be installed using pip with the following command:
  
-        pip install pandas numpy plotly dash sodapy
+        pip install dash dash_table dash_core_components dash_html_components plotly sodapy pandas
  
 
-Settings before starting the application
-----------------------------------------
+## Settings before starting the application
 
-- Credentials: In order to start your app insert your personal credentials for the NYC open
+### Credentials:
+
+In order to start your app insert your personal credentials for the NYC open
 data server. Enter the following data in the pre-defined section in TreesOfNYC.py
-    - username
-    - password
-    - app token
+ - username
+ - password
+ - app token
 
 
-- Data limit: You can limit the amount of data which is loaded by the webserver by setting
-data_limit. Keep in mind: if not the full data set is selected it is unknown
+### Data limit:
+
+You can limit the amount of data which is loaded by the webserver by setting
+data_limit. Keep in mind: if only parts of the full data set is selected it is unknown
 which data will be downloaded from the data source server.
-         
 
 
-Start the application 
----------------------
+## Start the application 
 
 python TreesOfNYC.py
 
@@ -46,8 +46,7 @@ other from other devices in your local network
 http://your-ip-adress-here:8050
 
 
-How the app works
------------------
+## How the app works
 
 Trees are represented by the colored circles in the map. The color of each
 circle represents the health status. The diameter of each circle roughly 
