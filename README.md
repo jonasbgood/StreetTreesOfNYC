@@ -18,12 +18,11 @@ In python these can be installed using pip with the following command:
 Settings before starting the application
 ----------------------------------------
 
-- Credentials:
-In order to start your app insert your personal credentials for the NYC open
+- Credentials: In order to start your app insert your personal credentials for the NYC open
 data server. Enter the following data in the pre-defined section in TreesOfNYC.py
- - username
- - password
- - app token
+    - username
+    - password
+    - app token
 
 
 - Data limit:
