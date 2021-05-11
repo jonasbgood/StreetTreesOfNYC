@@ -11,25 +11,29 @@ The following python packages are required:
  
 In python these can be installed using pip with the following command:
  
+```python
         pip install dash dash_table dash_core_components dash_html_components plotly sodapy pandas
- 
+```
+
 
 ## Settings before starting the application
 
-### Credentials:
+### Credentials for NYC OpenData:
 
-In order to start your app insert your personal credentials for the NYC open
-data server. Enter the following data in the pre-defined section in TreesOfNYC.py
- - username
- - password
- - app token
+In order to start your app insert your personal app_token for the NYC open
+data server in the pre-defined section in TreesOfNYC.py
 
+This app will start also without any app_token. Nevertheless, it might be
+restricted and access might cut off any time. For further information and
+creating your own app_token, see:
+https://dev.socrata.com/foundry/data.cityofnewyork.us/uvpi-gqnh
 
 ### Data limit:
 
 You can limit the amount of data which is loaded by the webserver by setting
-data_limit. Keep in mind: if only parts of the full data set is selected it is unknown
-which data will be downloaded from the data source server.
+data_limit. Keep in mind: if only parts of the full data set is selected it
+is unknown (at least to me) which data will be downloaded from the data
+source server.
 
 
 ## Start the application 
