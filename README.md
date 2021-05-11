@@ -1,4 +1,4 @@
-# StreeTreesOfNYC
+# StreetTreesOfNYC
 
 Requirements
 ------------
