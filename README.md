@@ -3,11 +3,14 @@
 ## Requirements
 
 The following python packages are required:
+ - numpy 
+ - dash 
+ - dash_table
+ - dash_core_components 
+ - dash_html_components
+ - plotly 
+ - sodapy 
  - pandas
- - numpy
- - plotly
- - dash
- - sopdapy
  
 In python these can be installed using pip with the following command:
  
@@ -39,7 +42,7 @@ source server.
 ## Start the application 
 
 ```python
-python TreesOfNYC.py
+python trees_of_nyc.py
 ```
 
 Note: depending on the data_limit it might take while until the data is loaded 
