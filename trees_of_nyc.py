@@ -2,14 +2,14 @@
 """
 Created on Fri Apr 23 11:05:04 2021
 
-To do:
+To do and nice to have:
     - start with empty map for faster load?
     - Keep zoom and location of user when filter change
     - show a nice empty map of nyc when no data selected or keep last setting
-    - change of color for entries after 'Alive' if 'Alive' is not present
     - create table with district statistics
+    - create individual links to google maps / street view for each tree
     - export function
-
+    
 possible analytical questions:
     - city improvement priorities
     - where are the most sick or dead trees (also in relative terms, e.g. per
@@ -29,12 +29,12 @@ import plotly.express as px
 from sodapy import Socrata
 import pandas as pd
 
-# predefined order for different health options
-# although 'Alive' exists but just once, probably errorneous entry
+## predefined order for different health options
+## although 'Alive' exists but just once, probably erroneous entry
 health_status_order = ['Good', 'Fair', 'Poor', 'Dead', 'Stump']
 
 # max number of data points
-data_limit = 20000
+data_limit = 2000
 
 
 def get_data(data_limit=2000):
@@ -42,14 +42,14 @@ def get_data(data_limit=2000):
     # data source
     datasource = "data.cityofnewyork.us"
     dataset = "uvpi-gqnh"
-    timeout = 20
+    timeout = 30
 
-    ##########################################
+    ########################################################################
     # Insert personal app_token here. Alternatively, if you do not want your
     # token in this file you can create a file app_token.txt in the
     # same directory containing only the app_token string
     token = ''
-    ##########################################
+    ########################################################################
 
     ## Try to read token from file app_token.txt
     if token == '':
@@ -66,11 +66,11 @@ def get_data(data_limit=2000):
     record_count_total = client.get(dataset, select="COUNT(*)")
     record_count_total = int(record_count_total[0]['COUNT'])
 
-    # results_meta = client.get_metadata(dataset)
+    ## results_meta = client.get_metadata(dataset)
     results = client.get(dataset, limit=data_limit)
     client.close()
 
-    # Convert to pandas DataFrame
+    ## Convert to pandas DataFrame
     df = pd.DataFrame.from_dict(results)
 
     # make data types usable and consistent
@@ -84,20 +84,20 @@ def get_data(data_limit=2000):
     df['spc_common'] = df['spc_common'].astype(str)
     df['problems']   = df['problems'].astype(str)
 
-    # replace small diameter values with a larger value just for visualization in a new column
+    ## replace small diameter values with a larger value just for visualization in a new column
     df['tree_dbh_vis'] = df.tree_dbh
     df.loc[df.status == 'Stump', 'tree_dbh_vis'] = df.stump_diam
-    df.loc[df.tree_dbh_vis < 3, 'tree_dbh_vis'] = 3
+    df.loc[df.tree_dbh_vis < 5, 'tree_dbh_vis'] = 5
 
-    # clipping of extremely large diameter
+    ## clipping of extremely large diameter
     df.loc[df.tree_dbh_vis > 25, 'tree_dbh_vis'] = 25
 
-    # replace values - variant 1, using numpy.where (strange... but it works)
+    ## replace values - variant 1, using numpy.where (strange... but it works)
     # df.spc_common = np.where(df.health == 'nan', df.status, df.spc_common)
-    # replace NaN in health by status entries ('Stump' or 'Dead')
+    ## replace NaN in health by status entries ('Stump' or 'Dead')
     # df['health'] = np.where(df['health'] == 'nan', df['status'], df['health'])
 
-    # replace nan values with status entires - variant 2, use pandas.where
+    ## replace nan values with status entires - variant 2, use pandas.where
     df.spc_common = df.status.where(df.spc_common == 'nan', df.spc_common)
     df['health'] = df['status'].where(df['health'] == 'nan', df['health'])
 
@@ -108,21 +108,21 @@ def create_mapbox_figure(df, health_status_selected):
 
     if df.count()[0] > 0:
 
-        # set legend entries in predefined order
+        ## set legend entries in predefined order
         category_orders = [
             val for val in health_status_order if val in health_status_selected]
 
-        # change color order to fit health status order
+        ## change color order to fit health status order
         my_colors = px.colors.DEFAULT_PLOTLY_COLORS.copy()
         my_colors[0] = px.colors.DEFAULT_PLOTLY_COLORS[2]  # 'Good' = green
         my_colors[1] = px.colors.DEFAULT_PLOTLY_COLORS[0]  # 'Fair' = blue
         my_colors[2] = px.colors.DEFAULT_PLOTLY_COLORS[1]  # 'Poor' = orange
 
-        # set color values
-        color_discrete_sequence = [my_colors[idx] for idx, val in enumerate(
-            health_status_order) if val in health_status_selected]
+        ## set color values
+        color_discrete_sequence = [my_colors[idx] for idx, val in 
+            enumerate(health_status_order) if val in health_status_selected]
 
-        # set hover data
+        ## set hover data
         hover_data = {'spc_latin': True,
                       'health': True,
                       'problems': True,
@@ -131,8 +131,8 @@ def create_mapbox_figure(df, health_status_selected):
                       'latitude': False,
                       'longitude': False,
                       'tree_id': True,
-                      # it is important to have tree_id on the last position
-                      # for single tree identification in get_single_tree_data()
+                      ## it is important to have tree_id on the last position
+                      ## for single tree identification in get_single_tree_data()
                       }
 
         fig = px.scatter_mapbox(df,
@@ -144,7 +144,7 @@ def create_mapbox_figure(df, health_status_selected):
                                 category_orders={'health': category_orders},
                                 color_discrete_sequence=color_discrete_sequence,
                                 size='tree_dbh_vis',
-                                size_max=15,
+                                size_max=10,
                                 mapbox_style="carto-positron",
                                 height=1000,
                                 )
@@ -155,7 +155,7 @@ def create_mapbox_figure(df, health_status_selected):
                           x=0.01
                           ))
     else:
-        # show empty map
+        ## show empty map
         #category_orders = health_status_order
         #color_discrete_sequence = my_colors
         fig = px.scatter_mapbox(df,
@@ -165,20 +165,28 @@ def create_mapbox_figure(df, health_status_selected):
                                 mapbox_style="carto-positron",
                                 height=1000)
 
-    # this might help to remember maps position and zoom
-    # still looking for better handling of new data and keeping
-    # user positions...
+    ## this might help to remember maps position and zoom
+    ## still looking for better handling of new data and keeping
+    ## user positions...
     fig['layout']['uirevision'] = 'my_setup'
 
     return fig
 
 
-# get data
+
+def filter_data(df, borough_name, health_status):
+    df_filter = df.loc[df['boroname'].isin(borough_name)]
+    df_filter = df_filter.loc[df_filter['health'].isin(health_status)]
+    return(df_filter)
+
+
+
+## get data
 df, record_count_total = get_data(data_limit)
 df_count = df.count()[0]
 
-# create health_status filter options
-# although 'Alive' exists just once or so, probably errorneous entry
+## create health_status filter options
+## although 'Alive' exists just once or so, probably errorneous entry
 health_status_order = ['Good', 'Fair', 'Poor', 'Dead', 'Stump']
 available_health_status = df['health'].unique().astype(str)
 
@@ -190,23 +198,21 @@ health_status = [
 health_status.extend(
     [val for val in available_health_status if val not in health_status_order])
 
-# compare health status lists and give warning if unexpected elements in available_health_status
+## compare health status lists and give warning if unexpected elements in available_health_status
 if set(available_health_status) - set(health_status_order) != set():
     print('Warning: Not all health status options covered:', set(
         available_health_status) - set(health_status_order))
 
-# create borough filter options
+## create borough filter options
 borough_unique = df['boroname'].unique()
 borough_unique.sort()
 
-# create first figure for startup with all data
-fig_mapbox = create_mapbox_figure(df, health_status)
-
-# set up app
+## set up app
 external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets, title='Street Trees')
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets, title='Street Trees', prevent_initial_callbacks=False)
 
 app.layout = html.Div([
+    
     html.H1(children='Hello trees of NYC'),
 
     dcc.Markdown('''
@@ -221,33 +227,57 @@ app.layout = html.Div([
 
             html.Div([
 
-                # Map for visualization
-                dcc.Graph(id='graph_mapbox', figure=fig_mapbox),
+                ## Map for visualization
+                dcc.Graph(id='graph_mapbox', figure=create_mapbox_figure(df, health_status)),
+#                dcc.Graph(id='graph_mapbox'),
 
                 html.Div([
 
                     html.Div([
 
-                        # Checklist for selecting Boroughs
+                        ## Checklist for selecting Boroughs
                         html.H3('Borough'),
                         dcc.Checklist(id='checklist_borough',
-                                      # make checklist with total number of elements in each category like, e.g.: Queens (212)
-                                      options=[
-                                          {'label': val + ' ({})'.format(sum(df.boroname == val)), 'value': val} for val in borough_unique],
-                                      value=borough_unique
-                                      )
+                                       # make checklist with total number of elements in each category like, e.g.: Queens (212)
+                                       options=[{'label': val + ' ({})'.format(sum(df.boroname == val)), 'value': val} for val in borough_unique],
+                                       value=borough_unique),
                     ], className='four columns'),
 
                     html.Div([
 
-                        # Checklist for selecting health status
+                        ## Checklist for selecting health status
                         html.H3('Health status'),
                         dcc.Checklist(id='checklist_health',
                                       # make checklist with total number of elements in each category like, e.g.: Good (1426)
-                                      options=[
-                                          {'label': val + ' ({})'.format(sum(df.health == val)), 'value': val} for val in health_status],
-                                      value=health_status
-                                      )
+                                      options=[{'label': val + ' ({})'.format(sum(df.health == val)), 'value': val} for val in health_status],
+                                      value=health_status),
+                        
+                    ], className='four columns'),
+
+                    html.Div([
+
+                        ## Export section
+                        html.H3('Export data'),
+
+                        html.H6('Complete data set'),
+                        
+                        html.Button("Download CSV", id="btn_all_csv"),
+                        dcc.Download(id="download_dataframe_all_csv"),
+                        
+                        html.Button("Download XLSX", id="btn_all_xlsx"),
+                        dcc.Download(id="download_dataframe_all_xlsx"),
+
+                        html.Br(),
+                        html.Br(),
+
+                        html.H6('Filtered data set'),
+                        
+                        html.Button("Download CSV", id="btn_filtered_csv"),
+                        dcc.Download(id="download_dataframe_filtered_csv"),
+                        
+                        html.Button("Download XLSX", id="btn_filtered_xlsx"),
+                        dcc.Download(id="download_dataframe_filtered_xlsx"),
+                        
                     ], className='four columns'),
 
                 ], className='row')
@@ -258,7 +288,7 @@ app.layout = html.Div([
 
         html.Div([
 
-            # Table showing details of selected item
+            ## Table showing details of selected item
             html.H3('Selected tree'),
             dash_table.DataTable(
                 id='selectedTreeTable',
@@ -270,37 +300,65 @@ app.layout = html.Div([
 
     ], className='row'),
 
+
+    dcc.Store(id='df_filtered'),
+
+    ## only for testing and debugging
     html.Div(id='TestText'),
+    
 
 ], style={"margin-left": "30px", "margin-right": "30px", })
+
+
+                 
+                 
+                 
+## call back functions
 
 
 @app.callback(dash.dependencies.Output('graph_mapbox', 'figure'),
               dash.dependencies.Input('checklist_borough', 'value'),
               dash.dependencies.Input('checklist_health', 'value'),)
 def update_graph_mapbox(borough_name, health_status):
-    # filter data
-    df_filter = df.loc[df['boroname'].isin(borough_name)]
-    df_filter = df_filter.loc[df_filter['health'].isin(health_status)]
+ 
+    ## filter data
+    df_filter = filter_data(df, borough_name, health_status)
+
+    ## store filtered data for export
+    
+    
     fig = create_mapbox_figure(df_filter, health_status)
+    
     return fig
 
 
 @app.callback(dash.dependencies.Output('selectedTreeTable', 'data'),
               dash.dependencies.Input('graph_mapbox', 'clickData'),)
-def get_single_tree_data(selectedValue):
+def get_single_tree_data(selected_value):
 
-    if selectedValue:
-        tree_id = selectedValue['points'][0]['customdata'][-1]
+    ## selected_value has the following structure:
+    ## {'points': [{'curveNumber': 4, 'pointNumber': 554, 'pointIndex': 554, 'lon': -73.94091248, 'lat': 40.71911554, 'hovertext': 'Stump', 'marker.size': 5, 'customdata': ['nan', 'Stump', 'nan', 0, 5, 40.71911554, -73.94091248, '221731']}]}
+    ## we are just interested in the tree_id which is the last value of
+    ## 'customdata'
+    if selected_value:
+        tree_id = selected_value['points'][0]['customdata'][-1]
 
+        ## get complete entry for tree_id
         value = df.loc[df.tree_id == tree_id]
 
+        ## remove tree_dbh_vis
+        value = value.drop(columns = ['tree_dbh_vis'])
+
+        ## Transpose 
         value = value.T
 
+        ## copy original row names into a new column
         value['Trait'] = value.index
-
+        
+        ## create new column names
         value.columns = ['Value', 'Trait']
-
+        
+        ## convert dataframe into dict which can be fed into DataTable
         data = value.to_dict('records')
 
         return data
@@ -308,23 +366,74 @@ def get_single_tree_data(selectedValue):
     return None
 
 
-# @app.callback(dash.dependencies.Output('TestText', 'children'),
-#               dash.dependencies.Input('graph_mapbox', 'clickData'),)
-# def get_single_tree_data_tmp(selectedValue):
 
-#     if selectedValue:
-#         tree_id = selectedValue['points'][0]['customdata'][-1]
+## data export functions
 
-#         value = df.loc[df.tree_id == tree_id]
+@app.callback(dash.dependencies.Output("download_dataframe_all_csv", "data"),
+              dash.dependencies.Input("btn_all_csv", "n_clicks"),
+              prevent_initial_call=True,)
+def download_all_csv(n_clicks):
+    df_download = df.drop(columns = ['tree_dbh_vis'])
+    return dcc.send_data_frame(df_download.to_csv, "StreetTreesOfNYC.csv")
 
-#         value = value.T
-#         columns = [val for val in value.columns]
+@app.callback(dash.dependencies.Output("download_dataframe_all_xlsx", "data"),
+              dash.dependencies.Input("btn_all_xlsx", "n_clicks"),
+              prevent_initial_call=True,)
+def download_all_xlsx(n_clicks):
+    df_download = df.drop(columns = ['tree_dbh_vis'])
+    return dcc.send_data_frame(df_download.to_excel, "StreetTreesOfNYC.xlsx", sheet_name="Sheet_1")
 
-#         data = value.to_dict('records')
 
-#         return '{} ############ {}'.format(selectedValue, data)
+@app.callback(dash.dependencies.Output("download_dataframe_filtered_csv", "data"),
+              dash.dependencies.Input("btn_filtered_csv", "n_clicks"),
+              prevent_initial_call=True,)
+def download_filtered_csv(n_clicks):
+    borough_name = checklist_borough.value
+    health_status = checklist_health.value
+    
+    df_filtered = filter_data(df, borough_name, health_status)
+    df_download = df_filtered.drop(columns = ['tree_dbh_vis'])
+    
+    return dcc.send_data_frame(df_download.to_csv, "StreetTreesOfNYC_filtered.csv")
 
-#     return None
+@app.callback(dash.dependencies.Output("download_dataframe_filtered_xlsx", "data"),
+              dash.dependencies.Input("btn_filtered_xlsx", "n_clicks"),
+              prevent_initial_call=True,
+)
+def download_filtered_xlsx(n_clicks):
+    borough_name = checklist_borough.value
+    health_status = checklist_health.value
+    
+    df_filtered = filter_data(df, borough_name, health_status)
+    df_download = df_filtered.drop(columns = ['tree_dbh_vis'])
+
+    return dcc.send_data_frame(df_download.to_excel, "StreetTreesOfNYC_filtered.xlsx", sheet_name="Sheet_1")
+
+
+
+
+## only for testing and debugging
+@app.callback(dash.dependencies.Output('TestText', 'children'),
+              dash.dependencies.Input('graph_mapbox', 'selectedData'),)
+def get_single_tree_data_tmp(in_value):
+
+    if in_value:
+        # tree_id = in_value['points'][0]['customdata'][-1]
+
+        # value = df.loc[df.tree_id == tree_id]
+
+        # value = value.T
+        # columns = [val for val in value.columns]
+
+        # data = value.to_dict('records')
+
+        return '{} ############ '.format(in_value)
+
+    return None
+
+
+
+
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ In python these can be installed using pip with the following command:
 
 ### Credentials for NYC OpenData:
 
-In order to start your app insert your personal app_token for the NYC open
+In order to start this app insert your personal app_token for the NYC open
 data server in the pre-defined section in TreesOfNYC.py
 
 This app will start also without any app_token. Nevertheless, it might be
@@ -55,8 +55,8 @@ http://your-ip-adress-here:8050
 ## How the app works
 
 Trees are represented by the colored circles in the map. The color of each
-circle represents the health status. The diameter of each circle roughly 
-relates to the diameter of the tree in inch. 
+circle represents the individuals health status. The diameter of each circle
+roughly relates to the diameter of the tree in inch. 
 
 The user can select trees from certain boroughs and certain health conditions.
 
