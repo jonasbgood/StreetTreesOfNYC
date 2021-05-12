@@ -12,7 +12,7 @@ The following python packages are required:
 In python these can be installed using pip with the following command:
  
 ```python
-        pip install dash dash_table dash_core_components dash_html_components plotly sodapy pandas
+        pip install numpy dash dash_table dash_core_components dash_html_components plotly sodapy pandas
 ```
 
 
@@ -31,7 +31,7 @@ https://dev.socrata.com/foundry/data.cityofnewyork.us/uvpi-gqnh
 ### Data limit:
 
 You can limit the amount of data which is loaded by the webserver by setting
-data_limit. Keep in mind: if only parts of the full data set is selected it
+data_limit. Keep in mind: if only a part of the full data set is selected it
 is unknown (at least to me) which data will be downloaded from the data
 source server.
 
@@ -58,8 +58,14 @@ Trees are represented by the colored circles in the map. The color of each
 circle represents the individuals health status. The diameter of each circle
 roughly relates to the diameter of the tree in inch. 
 
-The user can select trees from certain boroughs and certain health conditions.
-
+The user can select trees from a list boroughs and different health conditions. 
 By clicking on a single tree all available information for this tree is shown
 in the table on the right.
+
+The complete data sat as well as the filtered data can be exported and 
+downloaded to csv and xlsx files.
+
+The user can also select areas of interest using the tools provided in the map.
+All trees in a selected area can then be exporte.
+
 

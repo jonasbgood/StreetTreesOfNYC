@@ -9,6 +9,7 @@ To do and nice to have:
     - create table with district statistics
     - create individual links to google maps / street view for each tree
     - export function
+    . better performance for complete data set
     
 possible analytical questions:
     - city improvement priorities
@@ -33,8 +34,8 @@ import pandas as pd
 ## although 'Alive' exists but just once, probably erroneous entry
 health_status_order = ['Good', 'Fair', 'Poor', 'Dead', 'Stump']
 
-# max number of data points
-data_limit = 2000
+# max number of data points. Last time checked there were 683788 data points available
+data_limit = 20000
 
 
 def get_data(data_limit=2000):
@@ -74,6 +75,7 @@ def get_data(data_limit=2000):
     df = pd.DataFrame.from_dict(results)
 
     # make data types usable and consistent
+    df['tree_id']    = df['tree_id'].astype(int)
     df['latitude']   = df['latitude'].astype(float)
     df['longitude']  = df['longitude'].astype(float)
     df['tree_dbh']   = df['tree_dbh'].astype(float)
@@ -104,13 +106,16 @@ def get_data(data_limit=2000):
     return df, record_count_total
 
 
-def create_mapbox_figure(df, health_status_selected):
+def create_mapbox_figure(df):
 
     if df.count()[0] > 0:
+
+        health_status_selected = df['health'].unique().astype(str)
 
         ## set legend entries in predefined order
         category_orders = [
             val for val in health_status_order if val in health_status_selected]
+
 
         ## change color order to fit health status order
         my_colors = px.colors.DEFAULT_PLOTLY_COLORS.copy()
@@ -144,7 +149,7 @@ def create_mapbox_figure(df, health_status_selected):
                                 category_orders={'health': category_orders},
                                 color_discrete_sequence=color_discrete_sequence,
                                 size='tree_dbh_vis',
-                                size_max=10,
+                                size_max=15,
                                 mapbox_style="carto-positron",
                                 height=1000,
                                 )
@@ -174,10 +179,16 @@ def create_mapbox_figure(df, health_status_selected):
 
 
 
-def filter_data(df, borough_name, health_status):
-    df_filter = df.loc[df['boroname'].isin(borough_name)]
-    df_filter = df_filter.loc[df_filter['health'].isin(health_status)]
-    return(df_filter)
+
+
+def make_borough_options(df, borough_names):
+    options = [{'label': val + ' ({})'.format(sum(df.boroname == val)), 'value': val} for val in borough_names]
+    return options
+
+
+def make_health_status_options(df, health_status):
+    options = [{'label': val + ' ({})'.format(sum(df.health == val)), 'value': val} for val in health_status]
+    return options
 
 
 
@@ -188,155 +199,317 @@ df_count = df.count()[0]
 ## create health_status filter options
 ## although 'Alive' exists just once or so, probably errorneous entry
 health_status_order = ['Good', 'Fair', 'Poor', 'Dead', 'Stump']
-available_health_status = df['health'].unique().astype(str)
+health_status_unique = df['health'].unique().astype(str)
 
-# 1. add common status elements first in order
+# 1. add known status elements first in order
 health_status = [
-    val for val in health_status_order if val in available_health_status]
+    val for val in health_status_order if val in health_status_unique]
 
 # 2. add additional unexpected or new status elements at back
 health_status.extend(
-    [val for val in available_health_status if val not in health_status_order])
+    [val for val in health_status_unique if val not in health_status_order])
 
-## compare health status lists and give warning if unexpected elements in available_health_status
-if set(available_health_status) - set(health_status_order) != set():
-    print('Warning: Not all health status options covered:', set(
-        available_health_status) - set(health_status_order))
+## compare health status lists and give warning if unexpected elements in health_status_unique
+if set(health_status_unique) - set(health_status_order) != set():
+    print('Warning: Not all health status options covered:', set(health_status_unique) - set(health_status_order))
 
 ## create borough filter options
-borough_unique = df['boroname'].unique()
-borough_unique.sort()
+borough_names = df['boroname'].unique()
+borough_names.sort()
 
 ## set up app
 external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, title='Street Trees', prevent_initial_callbacks=False)
 
-app.layout = html.Div([
+app.layout = html.Div([ 
     
-    html.H1(children='Hello trees of NYC'),
+    html.Div([ # main row
 
-    dcc.Markdown('''
-                 The NYC 2015 Street Tree Census counts {} entries in total. Entries shown in this application: {}
+        html.Div([ # first column, width 8
 
-                 Data from here: [NYC OpenData 2015 Street Tree Census](https://data.cityofnewyork.us/Environment/2015-Street-Tree-Census-Tree-Data/uvpi-gqnh)
-                 '''.format(record_count_total, df_count)),
+            html.H1(children='Hello Street Trees of New York City'),
 
-    html.Div([
+            dcc.Markdown('''
+                     The NYC 2015 Street Tree Census counts {} entries in total. Entries shown in this application: {}
+    
+                     Data from here: [NYC OpenData 2015 Street Tree Census](https://data.cityofnewyork.us/Environment/2015-Street-Tree-Census-Tree-Data/uvpi-gqnh)
+                     '''.format(record_count_total, df_count)),
 
-        html.Div([
 
-            html.Div([
+            ## Map for visualization
+            dcc.Loading(id='loading_1', type='default',
+                        children = dcc.Graph(id='graph_mapbox')),
 
-                ## Map for visualization
-                dcc.Graph(id='graph_mapbox', figure=create_mapbox_figure(df, health_status)),
-#                dcc.Graph(id='graph_mapbox'),
+            html.Div([ # column
 
                 html.Div([
 
-                    html.Div([
+                    ## Checklist for selecting Boroughs
+                    html.H3('Borough'),
+                    dcc.Checklist(id='checklist_borough',
+                                   # make checklist with total number of elements in each category like, e.g.: Queens (212)
+                                   options=make_borough_options(df, borough_names),
+                                   value=['Brooklyn']),
 
-                        ## Checklist for selecting Boroughs
-                        html.H3('Borough'),
-                        dcc.Checklist(id='checklist_borough',
-                                       # make checklist with total number of elements in each category like, e.g.: Queens (212)
-                                       options=[{'label': val + ' ({})'.format(sum(df.boroname == val)), 'value': val} for val in borough_unique],
-                                       value=borough_unique),
-                    ], className='four columns'),
+                ], className='three columns'),
 
-                    html.Div([
+                html.Div([
 
-                        ## Checklist for selecting health status
-                        html.H3('Health status'),
-                        dcc.Checklist(id='checklist_health',
-                                      # make checklist with total number of elements in each category like, e.g.: Good (1426)
-                                      options=[{'label': val + ' ({})'.format(sum(df.health == val)), 'value': val} for val in health_status],
-                                      value=health_status),
-                        
-                    ], className='four columns'),
+                    ## Checklist for selecting health status
+                    html.H3('Health status'),
+                    dcc.Checklist(id='checklist_health',
+                                  # make checklist with total number of elements in each category like, e.g.: Good (1426)
+                                  options=make_health_status_options(df, health_status),
+                                  value=health_status),
+                    
 
-                    html.Div([
+                    ## storage variables wrapped in Loading(). This gives a 
+                    ## lifesign when large data sets are processed 
+                    html.Br(),
+                    html.Br(),
 
-                        ## Export section
-                        html.H3('Export data'),
+                    dcc.Loading(id='loading_2', type='default',
+                            children=[
+                                dcc.Store(id='store_df_filtered'),
+                                dcc.Store(id='store_df_filtered_borough'),
+                                dcc.Store(id='store_df_filtered_health'),
+                                dcc.Store(id='store_df_graph_select'),]),
 
-                        html.H6('Complete data set'),
-                        
-                        html.Button("Download CSV", id="btn_all_csv"),
-                        dcc.Download(id="download_dataframe_all_csv"),
-                        
-                        html.Button("Download XLSX", id="btn_all_xlsx"),
-                        dcc.Download(id="download_dataframe_all_xlsx"),
+                    
+                ], className='three columns'),
 
-                        html.Br(),
-                        html.Br(),
+                html.Div([
 
-                        html.H6('Filtered data set'),
-                        
-                        html.Button("Download CSV", id="btn_filtered_csv"),
-                        dcc.Download(id="download_dataframe_filtered_csv"),
-                        
-                        html.Button("Download XLSX", id="btn_filtered_xlsx"),
-                        dcc.Download(id="download_dataframe_filtered_xlsx"),
-                        
-                    ], className='four columns'),
+                    ## Export section
+                    html.H3('Export data'),
 
-                ], className='row')
+                    html.H6('Complete data set'),
+                    
+                    html.Button("Download CSV", id="btn_all_csv"),
+                    dcc.Download(id="download_dataframe_all_csv"),
+                    
+                    html.Button("Download XLSX", id="btn_all_xlsx"),
+                    dcc.Download(id="download_dataframe_all_xlsx"),
 
-            ], className='column')
+                    html.Br(),
+                    html.Br(),
 
-        ], className='nine columns'),
+                    html.H6('Filtered data set'),
+                    
+                    html.Button("Download CSV", id="btn_filtered_csv"),
+                    dcc.Download(id="download_dataframe_filtered_csv"),
+                    
+                    html.Button("Download XLSX", id="btn_filtered_xlsx"),
+                    dcc.Download(id="download_dataframe_filtered_xlsx"),
+                    
+                    html.Br(),
+                    html.Br(),
 
-        html.Div([
+                    html.H6('User selected (graphical selection)'),
+                    
+                    html.Button("Download CSV", id="btn_graph_select_csv"),
+                    dcc.Download(id="download_dataframe_graph_select_csv"),
+                    
+                    html.Button("Download XLSX", id="btn_graph_select_xlsx"),
+                    dcc.Download(id="download_dataframe_graph_select_xlsx"),
+                    
+                ], className='six columns'),
+
+            ], className='column'),
+
+        ], className='eight columns'),
+
+        html.Div([ # second sub column, width 3 for table on right side
 
             ## Table showing details of selected item
             html.H3('Selected tree'),
+            
             dash_table.DataTable(
                 id='selectedTreeTable',
                 columns=[{'name': 'Trait', 'id': 'Trait'},
                          {'name': 'Value', 'id': 'Value'}],
-            ),
+                ),
 
         ], className='three columns'),
 
     ], className='row'),
 
+    # ## only for testing and debugging
+    # html.Div('TEST', id='test_text'),
 
-    dcc.Store(id='df_filtered'),
-
-    ## only for testing and debugging
-    html.Div(id='TestText'),
-    
-
-], style={"margin-left": "30px", "margin-right": "30px", })
+])
 
 
                  
                  
-                 
+##############################################################################
 ## call back functions
+##############################################################################
 
 
-@app.callback(dash.dependencies.Output('graph_mapbox', 'figure'),
+    
+
+
+## update filtered data
+@app.callback(dash.dependencies.Output('store_df_filtered', 'data'),
+              dash.dependencies.Output('store_df_filtered_borough', 'data'),
+              dash.dependencies.Output('store_df_filtered_health', 'data'),
               dash.dependencies.Input('checklist_borough', 'value'),
-              dash.dependencies.Input('checklist_health', 'value'),)
-def update_graph_mapbox(borough_name, health_status):
- 
-    ## filter data
-    df_filter = filter_data(df, borough_name, health_status)
-
-    ## store filtered data for export
+              dash.dependencies.Input('checklist_health', 'value'),
+              prevent_initial_call=False,)
+def update_filtered_data(borough_name, health_status):
     
+    df_filtered_borough = df.loc[df['boroname'].isin(borough_name)]
+    df_filtered_health = df.loc[df['health'].isin(health_status)]
     
-    fig = create_mapbox_figure(df_filter, health_status)
+    df_filtered = df_filtered_borough.loc[df['health'].isin(health_status)]
     
-    return fig
+    return df_filtered.to_json(date_format='iso', orient='split'), \
+           df_filtered_borough.to_json(date_format='iso', orient='split'), \
+           df_filtered_health.to_json(date_format='iso', orient='split')
 
 
+## update mapbox figure
+@app.callback(dash.dependencies.Output('graph_mapbox', 'figure'),
+              dash.dependencies.Input('store_df_filtered', 'data'),
+              prevent_initial_call=True,)
+def update_graph_mapbox(jsonified_filtered_data):
+    df_filtered = pd.read_json(jsonified_filtered_data, orient='split')
+    return create_mapbox_figure(df_filtered)
+
+
+## update checklist_borough
+@app.callback(dash.dependencies.Output('checklist_borough', 'options'),
+              dash.dependencies.Input('store_df_filtered_health', 'data'))
+def update_borough_options(jsonified_filtered_data):
+    df_filtered = pd.read_json(jsonified_filtered_data, orient='split')
+    options = make_borough_options(df_filtered, borough_names)
+    return options
+
+## update checklist_health
+@app.callback(dash.dependencies.Output('checklist_health', 'options'),
+              dash.dependencies.Input('store_df_filtered_borough', 'data'))
+def update_health_status_options(jsonified_filtered_data):
+    df_filtered = pd.read_json(jsonified_filtered_data, orient='split')
+    options = make_health_status_options(df_filtered, health_status)
+    return options
+
+
+## save user selected tree_ids
+@app.callback(dash.dependencies.Output('store_df_graph_select', 'data'),
+              dash.dependencies.Input('graph_mapbox', 'selectedData'))
+def update_user_selected_data(selected_data):
+    if selected_data:
+        tree_ids = [val['customdata'][-1] for val in selected_data['points'] ]
+        return tree_ids
+    return None
+
+
+########################
+## data export functions
+########################
+
+## all data - csv
+@app.callback(dash.dependencies.Output("download_dataframe_all_csv", "data"),
+              dash.dependencies.Input("btn_all_csv", "n_clicks"),
+              prevent_initial_call=True,)
+def download_all_csv(n_clicks):
+    df_download = df.drop(columns = ['tree_dbh_vis'])
+    return dcc.send_data_frame(df_download.to_csv, "StreetTreesOfNYC.csv")
+
+## all data - excel
+@app.callback(dash.dependencies.Output("download_dataframe_all_xlsx", "data"),
+              dash.dependencies.Input("btn_all_xlsx", "n_clicks"),
+              prevent_initial_call=True,)
+def download_all_xlsx(n_clicks):
+    df_download = df.drop(columns = ['tree_dbh_vis'])
+    return dcc.send_data_frame(df_download.to_excel, "StreetTreesOfNYC.xlsx", sheet_name="Sheet_1")
+
+## filtered data - csv
+@app.callback(dash.dependencies.Output("download_dataframe_filtered_csv", "data"),
+              dash.dependencies.Input("btn_filtered_csv", "n_clicks"),
+              dash.dependencies.Input('store_df_filtered', 'data'),
+              prevent_initial_call=True,)
+def download_filtered_csv(n_clicks, jsonified_filtered_data):
+    
+    ## make sure that the button was clicked (we ignore the trigger event from altered data)
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    
+    if 'btn_filtered_csv' in changed_id:
+        df_filter = pd.read_json(jsonified_filtered_data, orient='split')
+        df_filter = df_filter.drop(columns = ['tree_dbh_vis'])
+    
+        return dcc.send_data_frame(df_filter.to_csv, "StreetTreesOfNYC_filtered.csv")
+    
+    return
+
+## filtered data - excel
+@app.callback(dash.dependencies.Output("download_dataframe_filtered_xlsx", "data"),
+              dash.dependencies.Input("btn_filtered_xlsx", "n_clicks"),
+              dash.dependencies.Input('store_df_filtered', 'data'),
+              prevent_initial_call=True,)
+def download_filtered_xlsx(n_clicks, jsonified_filtered_data):
+    
+    ## make sure that the button was clicked (we ignore the trigger event from altered data)
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    
+    if 'btn_filtered_xlsx' in changed_id:
+        df_filter = pd.read_json(jsonified_filtered_data, orient='split')
+        df_filter = df_filter.drop(columns = ['tree_dbh_vis'])
+    
+        return dcc.send_data_frame(df_filter.to_excel, "StreetTreesOfNYC_filtered.xlsx", sheet_name="Sheet_1")
+    
+    return
+
+
+## graph selected data - csv
+@app.callback(dash.dependencies.Output("download_dataframe_graph_select_csv", "data"),
+              dash.dependencies.Input("btn_graph_select_csv", "n_clicks"),
+              dash.dependencies.Input('store_df_graph_select', 'data'),
+              prevent_initial_call=True,)
+def download_graph_select_csv(n_clicks, tree_ids):
+    
+    ## make sure that the button was clicked (we ignore the trigger event from altered data)
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    
+    if 'btn_graph_select_csv' in changed_id and tree_ids:
+        
+        df_filter = df[df['tree_id'].isin(tree_ids)]
+        
+        df_filter = df_filter.drop(columns = ['tree_dbh_vis'])
+    
+        return dcc.send_data_frame(df_filter.to_csv, "StreetTreesOfNYC_graph_select.csv")
+    
+    return
+
+## graph selected data - excel
+@app.callback(dash.dependencies.Output("download_dataframe_graph_select_xlsx", "data"),
+              dash.dependencies.Input("btn_graph_select_xlsx", "n_clicks"),
+              dash.dependencies.Input('store_df_graph_select', 'data'),
+              prevent_initial_call=True,)
+def download_graph_select_xlsx(n_clicks, tree_ids):
+    
+    ## make sure that the button was clicked (we ignore the trigger event from altered data)
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    
+    if 'btn_graph_select_xlsx' in changed_id and tree_ids:
+         
+        df_filter = df[df['tree_id'].isin(tree_ids)]
+        
+        df_filter = df_filter.drop(columns = ['tree_dbh_vis'])
+    
+        return dcc.send_data_frame(df_filter.to_excel, "StreetTreesOfNYC_graph_select.xlsx", sheet_name="Sheet_1")
+    
+    return
+
+
+
+## extract all data for a single tree selected by the user
 @app.callback(dash.dependencies.Output('selectedTreeTable', 'data'),
               dash.dependencies.Input('graph_mapbox', 'clickData'),)
 def get_single_tree_data(selected_value):
 
-    ## selected_value has the following structure:
+    ## selected_value has the following exemplary structure:
     ## {'points': [{'curveNumber': 4, 'pointNumber': 554, 'pointIndex': 554, 'lon': -73.94091248, 'lat': 40.71911554, 'hovertext': 'Stump', 'marker.size': 5, 'customdata': ['nan', 'Stump', 'nan', 0, 5, 40.71911554, -73.94091248, '221731']}]}
     ## we are just interested in the tree_id which is the last value of
     ## 'customdata'
@@ -358,7 +531,7 @@ def get_single_tree_data(selected_value):
         ## create new column names
         value.columns = ['Value', 'Trait']
         
-        ## convert dataframe into dict which can be fed into DataTable
+        # convert dataframe into dict which can be fed into DataTable
         data = value.to_dict('records')
 
         return data
@@ -367,72 +540,19 @@ def get_single_tree_data(selected_value):
 
 
 
-## data export functions
+# ## only for testing and debugging
+# @app.callback(dash.dependencies.Output('test_text', 'children'),
+#               dash.dependencies.Input("store_df_graph_select", "data"))
+# def temp_fun(selected_values):
 
-@app.callback(dash.dependencies.Output("download_dataframe_all_csv", "data"),
-              dash.dependencies.Input("btn_all_csv", "n_clicks"),
-              prevent_initial_call=True,)
-def download_all_csv(n_clicks):
-    df_download = df.drop(columns = ['tree_dbh_vis'])
-    return dcc.send_data_frame(df_download.to_csv, "StreetTreesOfNYC.csv")
+#     if selected_values:
+        
+#         #tree_ids = [val['customdata'][-1] for val in selected_values['points'] ]
+        
+#         #df = pd.DataFrame.from_dict(selected_value)
+#         return '{} ############ '.format(selected_values)
 
-@app.callback(dash.dependencies.Output("download_dataframe_all_xlsx", "data"),
-              dash.dependencies.Input("btn_all_xlsx", "n_clicks"),
-              prevent_initial_call=True,)
-def download_all_xlsx(n_clicks):
-    df_download = df.drop(columns = ['tree_dbh_vis'])
-    return dcc.send_data_frame(df_download.to_excel, "StreetTreesOfNYC.xlsx", sheet_name="Sheet_1")
-
-
-@app.callback(dash.dependencies.Output("download_dataframe_filtered_csv", "data"),
-              dash.dependencies.Input("btn_filtered_csv", "n_clicks"),
-              prevent_initial_call=True,)
-def download_filtered_csv(n_clicks):
-    borough_name = checklist_borough.value
-    health_status = checklist_health.value
-    
-    df_filtered = filter_data(df, borough_name, health_status)
-    df_download = df_filtered.drop(columns = ['tree_dbh_vis'])
-    
-    return dcc.send_data_frame(df_download.to_csv, "StreetTreesOfNYC_filtered.csv")
-
-@app.callback(dash.dependencies.Output("download_dataframe_filtered_xlsx", "data"),
-              dash.dependencies.Input("btn_filtered_xlsx", "n_clicks"),
-              prevent_initial_call=True,
-)
-def download_filtered_xlsx(n_clicks):
-    borough_name = checklist_borough.value
-    health_status = checklist_health.value
-    
-    df_filtered = filter_data(df, borough_name, health_status)
-    df_download = df_filtered.drop(columns = ['tree_dbh_vis'])
-
-    return dcc.send_data_frame(df_download.to_excel, "StreetTreesOfNYC_filtered.xlsx", sheet_name="Sheet_1")
-
-
-
-
-## only for testing and debugging
-@app.callback(dash.dependencies.Output('TestText', 'children'),
-              dash.dependencies.Input('graph_mapbox', 'selectedData'),)
-def get_single_tree_data_tmp(in_value):
-
-    if in_value:
-        # tree_id = in_value['points'][0]['customdata'][-1]
-
-        # value = df.loc[df.tree_id == tree_id]
-
-        # value = value.T
-        # columns = [val for val in value.columns]
-
-        # data = value.to_dict('records')
-
-        return '{} ############ '.format(in_value)
-
-    return None
-
-
-
+#     return None
 
 
 
