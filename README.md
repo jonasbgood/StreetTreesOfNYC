@@ -27,9 +27,9 @@ In python these libraries can be installed using pip with the following command:
 
 ## Settings before starting the application
 
-### Credentials for NYC OpenData:
+### app token access for NYC OpenData:
 
-Before you launch this app you can insert your personal app_token for the NYC
+Before you launch this app you can insert your personal app token for the NYC
 OpenData server in the pre-defined section in trees_of_nyc.py
 
 This app will start also without any app_token. Nevertheless, transfer bandwidth
