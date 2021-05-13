@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
+@author: Jonas
+
 Created on Fri Apr 23 11:05:04 2021
 
 To do and nice to have:
     - start with empty map for faster load?
     - Keep zoom and location of user when filter change
-    - show a nice empty map of nyc when no data selected or keep last setting
+    - show empty map of nyc when no data selected or keep latest viewer setting
     - create table with district statistics
-    - create individual links to google maps / street view for each tree
+    - create individual links to google maps / street view for each tree?
     - export function
     . better performance for complete data set
     
@@ -16,12 +18,9 @@ possible analytical questions:
     - where are the most sick or dead trees (also in relative terms, e.g. per
       area, borogh or street length)
 
-@author: Jonas
 """
 
-#import math
-#import getpass
-import numpy as np # for numpy.where()
+import numpy as np 
 import dash
 import dash_table
 import dash_core_components as dcc
@@ -34,7 +33,7 @@ import pandas as pd
 ## although 'Alive' exists but just once, probably erroneous entry
 health_status_order = ['Good', 'Fair', 'Poor', 'Dead', 'Stump']
 
-# max number of data points. Last time checked there were 683788 data points available
+# max number of data points. Last time I checked there were 683788 data points available
 data_limit = 20000
 
 
@@ -47,7 +46,7 @@ def get_data(data_limit=2000):
 
     ########################################################################
     # Insert personal app_token here. Alternatively, if you do not want your
-    # token in this file you can create a file app_token.txt in the
+    # token published in this file you can create a file app_token.txt in the
     # same directory containing only the app_token string
     token = ''
     ########################################################################
@@ -86,7 +85,7 @@ def get_data(data_limit=2000):
     df['spc_common'] = df['spc_common'].astype(str)
     df['problems']   = df['problems'].astype(str)
 
-    ## replace small diameter values with a larger value just for visualization in a new column
+    ## replace small diameter values with higher values for visualization in a new column
     df['tree_dbh_vis'] = df.tree_dbh
     df.loc[df.status == 'Stump', 'tree_dbh_vis'] = df.stump_diam
     df.loc[df.tree_dbh_vis < 5, 'tree_dbh_vis'] = 5
