@@ -1,7 +1,10 @@
 # StreetTreesOfNYC
 
-This app visualizes the data from the 2015 Street Tree Census.
-It also provides options for filtering and export of the data.
+This app visualizes the data from the 2015 New York City Street Tree Census. It also
+provides options for filtering and export of the data.
+
+The original data source is hosted at:
+https://data.cityofnewyork.us/Environment/2015-Street-Tree-Census-Tree-Data/uvpi-gqnh
 
 ## Requirements
 
@@ -26,12 +29,12 @@ In python these libraries can be installed using pip with the following command:
 
 ### Credentials for NYC OpenData:
 
-In order to start this app you can insert your personal app_token for the NYC open
-data server in the pre-defined section in trees_of_nyc.py
+Before you launch this app you can insert your personal app_token for the NYC
+OpenData server in the pre-defined section in trees_of_nyc.py
 
-This app will start also without any app_token. Nevertheless, bandwidth might be
-restricted and access might be cut off any time. For further information and
-creating your own app_token, see:
+This app will start also without any app_token. Nevertheless, transfer bandwidth
+might be restricted and access might be cut off any time. For further information
+and creating your own app_token, see:
 https://dev.socrata.com/foundry/data.cityofnewyork.us/uvpi-gqnh
 
 ### Data limit:
@@ -64,14 +67,10 @@ Trees are represented by the colored circles in the map. The color of each
 circle represents the individuals health status. The diameter of each circle
 roughly relates to the diameter of the tree in inch. 
 
-The user can select trees from a list boroughs and different health conditions. 
-By clicking on a single tree all available information for this tree is shown
-in the table on the right.
+The user can filter street trees from different boroughs and with different health
+conditions. By clicking on a single tree all available information for this tree
+is shown in the table on the right. The user can also select areas of interest
+using the tools provided in the map.
 
-The complete data set as well as the filtered data can be exported and 
+The complete data set as well as the filtered and selected data can be exported and 
 downloaded to csv and xlsx files.
-
-The user can also select areas of interest using the tools provided in the map.
-All trees in a selected area can then be exporte.
-
-
