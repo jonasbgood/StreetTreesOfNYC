@@ -51,12 +51,12 @@ server.
 python trees_of_nyc.py
 ```
 
-Note: depending on the data_limit it might take a while until the data is loaded 
+Note: depending on data_limit it might take a while until the data is loaded 
 and the webserver is ready. The dasboard can now be opened in your web browser:
 
 http://localhost:8050
 
-other from other devices in your local network
+and from other devices in your local network
 
 http://your-ip-adress-here:8050
 
